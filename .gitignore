@@ -11,3 +11,5 @@ release/
 *.db
 *.tsbuildinfo
 .qa*/
+
+qa-artifacts/

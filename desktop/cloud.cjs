@@ -5,7 +5,7 @@ function setupCloud(store,getWindow,trustedSender,hasDraft){
  const ses=session.fromPartition('persist:shanti-cloud');let connectionWindow;
  const engine=new SyncEngine(store,async(route,method,body)=>{
   const base=store.meta('cloud-url');if(!base){const e=new Error('Connect your website to enable syncing.');e.status=401;throw e;}
-  const response=await ses.fetch(base+route,{method,headers:{'Content-Type':'application/json','Origin':base,'X-Shanti-Sync-Version':'2'},credentials:'include',redirect:'error',signal:AbortSignal.timeout(30000),...(body?{body:JSON.stringify(body)}:{})});
+  const response=await ses.fetch(base+route,{method,headers:{'Content-Type':'application/json','Origin':base,'X-Shanti-Sync-Version':'3'},credentials:'include',redirect:'error',signal:AbortSignal.timeout(30000),...(body?{body:JSON.stringify(body)}:{})});
   if(!response.headers.get('content-type')?.includes('application/json')){const e=new Error('Sign in again to reconnect the website.');e.status=401;throw e;}
   const data=await response.json();if(!response.ok){const e=new Error(data.error||'The website is unavailable.');e.status=response.status;throw e;}return data;
  },{onChange:()=>{const win=getWindow();if(win&&!win.isDestroyed())win.webContents.send('desktop:data-changed');}});

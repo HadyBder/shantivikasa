@@ -32,7 +32,7 @@ if(!locked)app.quit();else{
     if(/^\/api\/photos\/[a-f0-9]{64}$/.test(url.pathname)&&request.method==='GET'){const p=store.photo(url.pathname.split('/').pop());return p?new Response(p.bytes,{headers:{'Content-Type':p.mime,'Cache-Control':'no-store'}}):new Response('Photo not found',{status:404});}
     if(url.pathname.startsWith('/api/')){
      const origin=request.headers.get('origin');if(origin&&origin!=='shanti://app')return Response.json({error:'Request not allowed.'},{status:403});
-     let body={};if(request.method!=='GET'){const raw=await request.text();if(raw.length>3000000)return Response.json({error:'Request too large.'},{status:413});try{body=JSON.parse(raw);if(!body||typeof body!=='object'||Array.isArray(body))throw new Error('Invalid body');}catch{return Response.json({error:'Invalid request.'},{status:400});}}
+     let body=Object.fromEntries(url.searchParams);if(request.method!=='GET'){const raw=await request.text();if(raw.length>3000000)return Response.json({error:'Request too large.'},{status:413});try{body=JSON.parse(raw);if(!body||typeof body!=='object'||Array.isArray(body))throw new Error('Invalid body');}catch{return Response.json({error:'Invalid request.'},{status:400});}}
      const result=store.api(url.pathname,request.method,body);if(request.method!=='GET'&&result.status<300)cloud.changed();return Response.json(result.body,{status:result.status,headers:{'Cache-Control':'no-store'}});
     }
     if(request.method!=='GET')return new Response('Method not allowed',{status:405});
@@ -60,7 +60,7 @@ if(!locked)app.quit();else{
    {label:'File',submenu:[{label:'Back up data…',accelerator:'CmdOrCtrl+Shift+B',click:()=>showAction(backupDialog)},{label:'Restore backup…',click:()=>showAction(restoreDialog)},{label:'Open data folder',click:()=>shell.openPath(directory)},{type:'separator'},{role:'quit'}]},
    {label:'Edit',submenu:[{role:'undo'},{role:'redo'},{type:'separator'},{role:'cut'},{role:'copy'},{role:'paste'},{role:'selectAll'}]},
    {label:'View',submenu:[{role:'resetZoom'},{role:'zoomIn'},{role:'zoomOut'},{type:'separator'},{role:'togglefullscreen'}]},
-   {label:'Help',submenu:[{label:'About this register',click:()=>dialog.showMessageBox(win,{title:'Shanti Vikāsa',type:'info',message:'Shanti Vikāsa · Shop Register 1.0.2',detail:'Your inventory and receipts are saved on this computer. This app works offline. Connect your website to sync inventory, photos, and receipts. Shopify is separate.\n\nUse File → Back up data to save a copy to a USB drive.\n\nF2: Scan · F3: Search · F9: Checkout',buttons:['OK']})}]}
+   {label:'Help',submenu:[{label:'About this register',click:()=>dialog.showMessageBox(win,{title:'Shanti Vikāsa',type:'info',message:'Shanti Vikāsa · Shop Register 1.0.3',detail:'Your inventory and receipts are saved on this computer. This app works offline. Connect your website to sync inventory, photos, and receipts. Shopify is separate.\n\nUse File → Back up data to save a copy to a USB drive.\n\nF2: Scan · F3: Search · F9: Checkout',buttons:['OK']})}]}
   ]));
   win.once('ready-to-show',()=>win.show());
   win.webContents.on('did-fail-load',(_event,code,description)=>{if(code!==-3){dialog.showErrorBox('Could not open the register',description);app.quit();}});

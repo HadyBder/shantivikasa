@@ -15,6 +15,13 @@
       "when": 1788794426442,
       "tag": "0001_yellow_hiroim",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1788810009160,
+      "tag": "0002_fat_puck",
+      "breakpoints": true
     }
   ]
 }

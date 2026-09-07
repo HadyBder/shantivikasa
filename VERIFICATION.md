@@ -1,3 +1,15 @@
+# Version 1.0.3 expanded register update
+
+- 26 automated checks cover authentication, checkout/stock, photos, backups, upgrade preservation, category creation/removal/recreation, stale offline edits, duplicate/replayed sync operations, and sales reports.
+- Reports are tested for local-day boundaries, Monday–Sunday weeks, leap months, more than 100 receipts, removed-product history, accurate discounts/tax/payment totals and agreement between desktop and server.
+- Category removal atomically reassigns products to Other without deleting stock or receipts. Removal state survives backup and sync; the Other fallback is protected.
+- Desktop database schema 5 prevents older applications from silently reopening data with unsupported category semantics. A pre-upgrade backup is retained.
+- Cloud integration tests use an isolated in-memory libSQL database; desktop persistence tests use real on-disk SQLite databases. This avoids Windows cleanup locks in the native libSQL test binding.
+- The Windows build runs scripts/verify-ui.cjs against the actual Electron renderer and isolated app data, then scripts/verify-pdfs.py checks that generated PDFs contain item names, quantities, prices, totals and the final line of a long receipt.
+- TypeScript and production builds pass. The native UI/PDF script is configured as a Windows CI gate, but has not run for this release yet: this workspace prevents Electron from opening its required socket. Windows launch, generated PDFs and a physical printer still require verification; no shop data is used by the automated checks.
+
+## Previous release verification
+
 # Version 1.0.2 category update
 
 - 20 automated tests pass, including the previous authentication, checkout, stock, photo, backup and sync tests.

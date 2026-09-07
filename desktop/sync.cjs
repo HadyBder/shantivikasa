@@ -3,7 +3,7 @@ const {randomUUID}=require('node:crypto');
 class SyncEngine{
  constructor(store,request,{onChange=()=>{}}={}){this.store=store;this.request=request;this.onChange=onChange;this.running=false;this.status={state:'disconnected',message:'Saved on this computer',lastSync:null};}
  info(){return {...this.status,pending:this.store.pendingEvents().length,linked:!!this.store.meta('cloud-linked')};}
- async readOnline(){const online=await this.request('/api/sync','GET');if(online.syncProtocol!==2){const e=new Error('The website needs the 1.0.2 category update before syncing. Your local data is kept.');e.status=426;throw e;}return online;}
+ async readOnline(){const online=await this.request('/api/sync','GET');if(online.syncProtocol!==3){const e=new Error('The website needs the 1.0.3 category update before syncing. Your local data is kept.');e.status=426;throw e;}return online;}
  async run({join=false}={}){
   if(this.running)return this.info();this.running=true;this.status={...this.status,state:'syncing',message:'Syncing…'};
   try{

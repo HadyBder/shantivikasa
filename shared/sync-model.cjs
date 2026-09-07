@@ -1,5 +1,5 @@
 'use strict';
-const {normalizeCategory,categoryList}=require('./categories.cjs');
+const {normalizeCategory,categoryKey,categoryList}=require('./categories.cjs');
 const fields=['id','name','code','category','unit','icon','price','stock','version','image','sourceUrl','sourceProductId','sourceVariantId','stockTracked','available','archived'];
 const fail=(message,status=400)=>{const e=new Error(message);e.status=status;throw e;};
 const int=(v,min,max,label)=>{if(!Number.isSafeInteger(v)||v<min||v>max)fail(`${label} is invalid.`);return v;};
@@ -31,11 +31,20 @@ function applyEvent(state,event){
  if(typeof event.id!=='string'||!/^[a-f0-9-]{36}$/i.test(event.id))fail('Invalid operation ID.');
  const next=structuredClone(state);let touched=[];
  if(event.kind==='category'){
-  next.categories=categoryList([...(next.categories||[]),normalizeCategory(event.name)],next.products);
+  const name=normalizeCategory(event.name);next.removedCategories=(next.removedCategories||[]).filter(n=>categoryKey(n)!==categoryKey(name));
+  next.categories=categoryList([...(next.categories||[]),name],next.products,next.removedCategories);
   return {state:next,products:[],sale:null};
+ }
+ if(event.kind==='category-delete'){
+  const name=normalizeCategory(event.name);if(categoryKey(name)==='other')fail('Other is kept for products without a category.');
+  next.removedCategories=[...new Set([...(next.removedCategories||[]).map(categoryKey),categoryKey(name)])];
+  for(const p of next.products)if(categoryKey(p.category)===categoryKey(name)){p.category='Other';p.version++;touched.push(p);}
+  next.categories=categoryList(next.categories||[],next.products,next.removedCategories);
+  return {state:next,products:touched,sale:null};
  }
  if(event.kind==='product'){
   const after=validateProduct(event.after),before=event.before;
+  if((next.removedCategories||[]).some(n=>categoryKey(n)===categoryKey(after.category)))after.category='Other';
   const remote=next.products.find(p=>p.id===after.id);
   if(before){
    validateProduct(before);if(before.id!==after.id||!remote)fail('This product no longer exists online.',409);
@@ -64,7 +73,7 @@ function applyEvent(state,event){
   sale.number=Math.max(0,...next.sales.map(s=>s.number))+1;next.sales.push(sale);
   return {state:next,products:touched,sale};
  }else fail('Unknown sync operation.');
- next.categories=categoryList(next.categories||[],next.products);
+ next.categories=categoryList(next.categories||[],next.products,next.removedCategories||[]);
  return {state:next,products:touched,sale:null};
 }
 module.exports={fields,fail,int,validateProduct,validateSale,amounts,applyEvent};

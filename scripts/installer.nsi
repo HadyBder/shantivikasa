@@ -2,12 +2,12 @@ Unicode true
 !include "MUI2.nsh"
 !include "x64.nsh"
 !define APP_NAME "Shanti Vikasa"
-!define APP_VERSION "1.0.2"
+!define APP_VERSION "1.0.3"
 !ifndef APP_DIR
  !define APP_DIR "../release/windows-app"
 !endif
 !ifndef OUTPUT_FILE
- !define OUTPUT_FILE "../release/ShantiVikasa-Setup-1.0.2.exe"
+ !define OUTPUT_FILE "../release/ShantiVikasa-Setup-1.0.3.exe"
 !endif
 !ifndef APP_ICON
  !define APP_ICON "../public/shanti.ico"
@@ -20,11 +20,11 @@ SetCompressor /SOLID lzma
 SetCompressorDictSize 32
 ShowInstDetails show
 ShowUninstDetails show
-VIProductVersion "1.0.2.0"
+VIProductVersion "1.0.3.0"
 VIAddVersionKey /LANG=1033 "ProductName" "Shanti Vikasa Shop Register"
 VIAddVersionKey /LANG=1033 "FileDescription" "Shanti Vikasa Windows Installer"
-VIAddVersionKey /LANG=1033 "FileVersion" "1.0.2"
-VIAddVersionKey /LANG=1033 "ProductVersion" "1.0.2"
+VIAddVersionKey /LANG=1033 "FileVersion" "1.0.3"
+VIAddVersionKey /LANG=1033 "ProductVersion" "1.0.3"
 VIAddVersionKey /LANG=1033 "LegalCopyright" "Shanti Vikasa"
 !define MUI_ICON "${APP_ICON}"
 !define MUI_UNICON "${APP_ICON}"
@@ -64,14 +64,14 @@ Section "Install"
  SetOutPath "$INSTDIR"
  File /r "${APP_DIR}/*.*"
  FileOpen $0 "$INSTDIR\.shanti-install" w
- FileWrite $0 "ShantiVikasa-1.0.2"
+ FileWrite $0 "ShantiVikasa-1.0.3"
  FileClose $0
  WriteUninstaller "$INSTDIR\Uninstall.exe"
  CreateDirectory "$SMPROGRAMS\Shanti Vikasa"
  CreateShortCut "$SMPROGRAMS\Shanti Vikasa\Shanti Vikasa.lnk" "$INSTDIR\ShantiVikasa.exe" "" "$INSTDIR\shanti.ico"
  CreateShortCut "$DESKTOP\Shanti Vikasa.lnk" "$INSTDIR\ShantiVikasa.exe" "" "$INSTDIR\shanti.ico"
  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\ShantiVikasa" "DisplayName" "Shanti Vikasa Shop Register"
- WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\ShantiVikasa" "DisplayVersion" "1.0.2"
+ WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\ShantiVikasa" "DisplayVersion" "1.0.3"
  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\ShantiVikasa" "UninstallString" '"$INSTDIR\Uninstall.exe"'
  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\ShantiVikasa" "DisplayIcon" "$INSTDIR\shanti.ico"
  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\ShantiVikasa" "InstallLocation" "$INSTDIR"
