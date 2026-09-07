@@ -60,7 +60,7 @@ if(!locked)app.quit();else{
    {label:'File',submenu:[{label:'Back up data…',accelerator:'CmdOrCtrl+Shift+B',click:()=>showAction(backupDialog)},{label:'Restore backup…',click:()=>showAction(restoreDialog)},{label:'Open data folder',click:()=>shell.openPath(directory)},{type:'separator'},{role:'quit'}]},
    {label:'Edit',submenu:[{role:'undo'},{role:'redo'},{type:'separator'},{role:'cut'},{role:'copy'},{role:'paste'},{role:'selectAll'}]},
    {label:'View',submenu:[{role:'resetZoom'},{role:'zoomIn'},{role:'zoomOut'},{type:'separator'},{role:'togglefullscreen'}]},
-   {label:'Help',submenu:[{label:'About this register',click:()=>dialog.showMessageBox(win,{title:'Shanti Vikāsa',type:'info',message:'Shanti Vikāsa · Shop Register 1.0.1',detail:'Your inventory and receipts are saved on this computer. This app works offline. Connect your website to sync inventory, photos, and receipts. Shopify is separate.\n\nUse File → Back up data to save a copy to a USB drive.\n\nF2: Scan · F3: Search · F9: Checkout',buttons:['OK']})}]}
+   {label:'Help',submenu:[{label:'About this register',click:()=>dialog.showMessageBox(win,{title:'Shanti Vikāsa',type:'info',message:'Shanti Vikāsa · Shop Register 1.0.2',detail:'Your inventory and receipts are saved on this computer. This app works offline. Connect your website to sync inventory, photos, and receipts. Shopify is separate.\n\nUse File → Back up data to save a copy to a USB drive.\n\nF2: Scan · F3: Search · F9: Checkout',buttons:['OK']})}]}
   ]));
   win.once('ready-to-show',()=>win.show());
   win.webContents.on('did-fail-load',(_event,code,description)=>{if(code!==-3){dialog.showErrorBox('Could not open the register',description);app.quit();}});

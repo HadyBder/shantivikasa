@@ -1,6 +1,6 @@
 {
   "name": "shanti-vikasa-register",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "private": true,
   "description": "Shanti Vikasa offline Windows register with secure online synchronization",
   "main": "desktop/main.cjs",

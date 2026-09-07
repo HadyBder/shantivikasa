@@ -16,7 +16,7 @@ async function setup(){
  const env={authorized:true,DB:sqlAdapter(client),BUCKET:photoAdapter(client)};
  const store=new Store(path.join(dir,'desktop'),structuredClone(fixture));
  const request=async(route,method,body)=>{
-  const r=await handler.fetch(new Request('https://shop.test'+route,{method,headers:{'Content-Type':'application/json','oai-authenticated-user-id':'owner','Origin':'https://shop.test'},...(body?{body:JSON.stringify(body)}:{})}),env);
+  const r=await handler.fetch(new Request('https://shop.test'+route,{method,headers:{'Content-Type':'application/json','oai-authenticated-user-id':'owner','Origin':'https://shop.test','X-Shanti-Sync-Version':'2'},...(body?{body:JSON.stringify(body)}:{})}),env);
   const data=await r.json();if(!r.ok){const e=new Error(data.error);e.status=r.status;throw e;}return data;
  };
  const engine=new SyncEngine(store,request);
@@ -98,4 +98,67 @@ test('unauthenticated and cross-origin API requests cannot read or mutate data',
   assert.equal((await x.handler.fetch(new Request('https://shop.test/api/products',{headers:{'oai-authenticated-user-id':'owner',Origin:'https://evil.test'}}),x.env)).status,403);
   assert.equal(x.store.api('/api/photos','POST',{mime:'image/svg+xml',data:Buffer.from('<svg onload=alert(1)></svg>').toString('base64')}).status,400);
  }finally{x.close();}
+});
+
+test('empty categories persist offline, merge across devices, and stay usable after restart',async()=>{
+ const x=await setup();let second;try{
+  await x.engine.run();second=new Store(path.join(x.dir,'second'),fixture);const engine2=new SyncEngine(second,x.request);assert.equal((await engine2.run({join:true})).state,'synced');
+  assert.equal(x.store.api('/api/categories','POST',{name:'  Candles  '}).status,201);
+  second.addCategory('candles');second.addCategory('Jewellery');
+  assert.equal(x.store.pendingEvents()[0].kind,'category');
+  assert.equal((await x.engine.run()).state,'synced');assert.equal((await engine2.run()).state,'synced');await x.engine.run();
+  assert.deepEqual(x.store.categories(),second.categories());assert.equal(x.store.categories().filter(n=>n.toLowerCase()==='candles').length,1);
+  await x.request('/api/categories','POST',{name:'Gift boxes'});await x.engine.run();assert(x.store.categories().includes('Gift boxes'));
+  const p=x.store.products()[0];edit(x.store,p.id,{category:'Candles'});assert.equal((await x.engine.run()).state,'synced');await engine2.run();assert.equal(second.products().find(q=>q.id===p.id).category,'Candles');
+  // Remove its last product: the category must remain available.
+  const now=x.store.products().find(q=>q.id===p.id);x.store.archiveProduct(now);await x.engine.run();await engine2.run();assert(second.categories().includes('Candles'));
+  const dir=second.directory;second.close();second=new Store(dir,fixture);assert(second.categories().includes('Gift boxes'));assert(second.categories().includes('Jewellery'));
+ }finally{second?.close();x.close();}
+});
+test('category retry after lost acknowledgement is idempotent and local additions during pull survive',async()=>{
+ const x=await setup();try{
+  await x.engine.run();x.store.addCategory('Candles');let lose=true;
+  x.engine.request=async(route,...args)=>{const result=await x.request(route,...args);if(route==='/api/sync/events'&&lose){lose=false;throw new Error('Lost acknowledgement');}return result;};
+  assert.equal((await x.engine.run()).state,'offline');assert.equal(x.store.pendingEvents().length,1);
+  assert.equal((await x.engine.run()).state,'synced');assert.equal(x.store.pendingEvents().length,0);
+  let inject=true;x.engine.request=async(route,...args)=>{const result=await x.request(route,...args);if(route==='/api/sync'&&inject){inject=false;x.store.addCategory('Added during sync');}return result;};
+  await x.engine.run();const names=(await x.request('/api/categories','GET')).categories;assert.equal(names.filter(n=>n==='Candles').length,1);assert(names.includes('Added during sync'));
+ }finally{x.close();}
+});
+test('blank, reserved and oversized category names fail; Unicode and duplicate names are handled',async()=>{
+ const x=await setup();try{
+  await x.engine.run();for(const name of ['', '  ', 'All goods','all   goods','a'.repeat(41),'Bad\nName',null]){
+   assert.equal(x.store.api('/api/categories','POST',{name}).status,400);
+   await assert.rejects(x.request('/api/categories','POST',{name}),e=>e.status===400);
+  }
+  x.store.addCategory('  Café   gifts  ');x.store.addCategory('CAFE\u0301 GIFTS');assert.equal(x.store.categories().filter(n=>n.toLowerCase()==='café gifts').length,1);
+  await Promise.all([x.request('/api/categories','POST',{name:'Candles'}),x.request('/api/categories','POST',{name:'candles'}),x.request('/api/categories','POST',{name:'Gifts'})]);
+  await x.engine.run();const names=x.store.categories();assert(names.includes('Café gifts'));assert(names.includes('Gifts'));assert.equal(names.filter(n=>n.toLowerCase()==='candles').length,1);
+ }finally{x.close();}
+});
+test('categories and product assignments survive backup and restore together with photos and receipts',async()=>{
+ const x=await setup();let restored;try{
+  await x.engine.run();x.store.addCategory('Candles');x.store.addCategory('Empty category');const p=x.store.products()[0];edit(x.store,p.id,{category:'Candles'});const receipt=sale(x.store,p);
+  const image=x.store.putPhoto({mime:'image/jpeg',data:fs.readFileSync(path.join(__dirname,'../public/products/7799999791203.jpg')).toString('base64')}).image;edit(x.store,p.id,{image});
+  const backup=path.join(x.dir,'categories.sqlite');x.store.backup(backup);restored=new Store(path.join(x.dir,'restored'),fixture);restored.restore(backup);
+  assert.deepEqual(restored.categories(),x.store.categories());assert.equal(restored.products().find(q=>q.id===p.id).category,'Candles');assert.equal(restored.products().find(q=>q.id===p.id).image,image);assert(restored.photo(image.split('/').pop()));assert(restored.sale(receipt.id));assert(!restored.meta('cloud-linked'));assert.equal(restored.pendingEvents().length,0);
+ }finally{restored?.close();x.close();}
+});
+test('old desktop clients get a clear upgrade response, and new clients preserve data against old servers',async()=>{
+ const x=await setup();try{
+  await x.engine.run();const legacy=()=>x.handler.fetch(new Request('https://shop.test/api/sync'),x.env);assert.equal((await legacy()).status,200);
+  x.store.addCategory('Candles');edit(x.store,x.store.products()[0].id,{category:'Candles'});await x.engine.run();const response=await legacy();assert.equal(response.status,426);assert.match((await response.json()).error,/1.0.2/);
+  const before=x.store.snapshot();x.engine.request=async(route,...args)=>{const d=await x.request(route,...args);delete d.syncProtocol;delete d.snapshot?.categories;return d;};
+  const status=await x.engine.run();assert.equal(status.state,'offline');assert.match(status.message,/website needs/);assert.deepEqual(x.store.snapshot(),before);
+ }finally{x.close();}
+});
+test('upgrading the actual 1.0.1 store preserves receipts, photos and pending events and saves a pre-upgrade backup',()=>{
+ const dir=fs.mkdtempSync(path.join(os.tmpdir(),'shanti-v3-'));const {Store:Old}=require('./fixtures/store-v3.cjs');let old=new Old(dir,fixture),upgraded;
+ try{
+  old.setMeta('cloud-linked','1');old.setMeta('cloud-url','https://shop.test');const p=old.products()[0];old.saveProduct({...p,name:'Existing shop edit',stockTracked:1,stock:12},true);const receipt=sale(old,old.products().find(q=>q.id===p.id));
+  const photo=old.putPhoto({mime:'image/jpeg',data:fs.readFileSync(path.join(__dirname,'../public/products/7799999791203.jpg')).toString('base64')});old.saveProduct({...old.products().find(q=>q.id===p.id),image:photo.image},true);
+  const before=old.snapshot(),pending=old.pendingEvents();old.close();old=null;upgraded=new Store(dir,fixture);
+  assert.deepEqual(upgraded.snapshot().products,before.products);assert.deepEqual(upgraded.snapshot().sales,before.sales);assert.deepEqual(upgraded.pendingEvents(),pending);assert(upgraded.sale(receipt.id));assert(upgraded.photo(photo.image.split('/').pop()));assert.equal(upgraded.meta('cloud-url'),'https://shop.test');assert.equal(upgraded.db.prepare('PRAGMA user_version').get().user_version,4);
+  const backup=fs.readdirSync(path.join(dir,'backups')).find(n=>n.startsWith('before-category-upgrade-'));assert(backup);const {DatabaseSync}=require('node:sqlite');const b=new DatabaseSync(path.join(dir,'backups',backup));assert.equal(b.prepare('PRAGMA user_version').get().user_version,3);b.close();
+ }finally{old?.close();upgraded?.close();fs.rmSync(dir,{recursive:true,force:true});}
 });

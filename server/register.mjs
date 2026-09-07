@@ -1,5 +1,7 @@
 import {Buffer} from 'node:buffer';
 import model from '../shared/sync-model.cjs';
+import categories from '../shared/categories.cjs';
+const {defaults,normalizeCategory,categoryKey}=categories;
 import photos from '../shared/photos.cjs';
 import {Repository} from './repository.mjs';
 const {fail,int,validateProduct,amounts,applyEvent}=model;
@@ -21,7 +23,11 @@ export default {async fetch(request,env){
   if(!['GET','POST','PATCH','DELETE','PUT'].includes(request.method))fail('Method not allowed.',405);
   const origin=request.headers.get('origin');if(origin&&origin!==url.origin)fail('Request not allowed.',403);
   const repo=new Repository(env.DB);
-  if(url.pathname==='/api/sync'&&request.method==='GET')return json(await repo.read());
+  if(url.pathname==='/api/sync'&&request.method==='GET'){const data=await repo.read();if(request.headers.get('X-Shanti-Sync-Version')!=='2'&&data.snapshot.products.some(p=>!defaults.includes(p.category)))fail('Install Shanti Vikasa 1.0.2 or newer to sync custom categories. Your local data is kept.',426);return json(data);}
+  if(url.pathname==='/api/categories'){
+   if(request.method==='GET')return json({categories:(await repo.read()).snapshot.categories});
+   if(request.method==='POST'){const b=await bodyOf(request),name=normalizeCategory(b.name);const id=crypto.randomUUID();await repo.mutate(id,state=>applyEvent(state,{id,kind:'category',name}));const names=(await repo.read()).snapshot.categories;return json({ok:true,name:names.find(n=>categoryKey(n)===categoryKey(name)),categories:names},201);}
+  }
   if(url.pathname==='/api/sync/bootstrap'&&request.method==='POST'){
    const b=await bodyOf(request,16000000);for(const p of b.snapshot?.products||[])if(p.image?.startsWith('/api/photos/')&&!await env.BUCKET.head(p.image.slice(12)))fail('Upload all product photos before importing.');return json(await repo.bootstrap(b));
   }
@@ -39,7 +45,7 @@ export default {async fetch(request,env){
    return new Response(photo.body,{headers:{'Content-Type':photo.httpMetadata.contentType,'Cache-Control':'private, max-age=31536000, immutable','X-Content-Type-Options':'nosniff'}});
   }
   if(url.pathname==='/api/products'){
-   if(request.method==='GET'){const d=await repo.read();return json({products:d.snapshot.products.filter(p=>!p.archived),needsImport:!d.initialized});}
+   if(request.method==='GET'){const d=await repo.read();return json({products:d.snapshot.products.filter(p=>!p.archived),categories:d.snapshot.categories,needsImport:!d.initialized});}
    if(['POST','PATCH','DELETE'].includes(request.method)){
     const b=await bodyOf(request);if(b.image?.startsWith('/api/photos/')&&!await env.BUCKET.head(b.image.slice(12)))fail('Upload the product photo first.');
     const id=crypto.randomUUID();return json(await repo.mutate(id,state=>{
@@ -48,7 +54,7 @@ export default {async fetch(request,env){
      let after;
      if(request.method==='DELETE')after={...before,archived:1,available:0,version:before.version+1};
      else after={...(before||{id:crypto.randomUUID(),version:1,image:'',sourceUrl:'',sourceProductId:'',sourceVariantId:'',archived:0}),...Object.fromEntries(['name','code','category','unit','icon','price','stock','stockTracked','available'].map(k=>[k,b[k]])),...(b.image!==undefined?{image:b.image}:{})};
-     validateProduct(after);return applyEvent(state,{id,kind:'product',before,after});
+     after.category=normalizeCategory(after.category);validateProduct(after);return applyEvent(state,{id,kind:'product',before,after});
     }));
    }
   }

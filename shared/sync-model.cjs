@@ -1,11 +1,12 @@
 'use strict';
+const {normalizeCategory,categoryList}=require('./categories.cjs');
 const fields=['id','name','code','category','unit','icon','price','stock','version','image','sourceUrl','sourceProductId','sourceVariantId','stockTracked','available','archived'];
 const fail=(message,status=400)=>{const e=new Error(message);e.status=status;throw e;};
 const int=(v,min,max,label)=>{if(!Number.isSafeInteger(v)||v<min||v>max)fail(`${label} is invalid.`);return v;};
 function validateProduct(p){
  for(const [f,max] of [['id',80],['name',80],['code',80],['category',40],['unit',40],['icon',30]])if(typeof p[f]!=='string'||!p[f].trim()||p[f].length>max)fail(`Invalid product ${f}.`);
  if(!/^[A-Za-z0-9._-]+$/.test(p.code))fail('Invalid product code.');
- if(!['Raw crystals','Incense holders','Incense sticks','Other'].includes(p.category))fail('Invalid category.');
+ if(normalizeCategory(p.category)!==p.category)fail('Use a trimmed category name with single spaces.');
  int(p.price,1,10000000,'Price');int(p.stock,0,1000000,'Stock');int(p.version,1,Number.MAX_SAFE_INTEGER,'Version');
  for(const f of ['stockTracked','available','archived'])int(p[f],0,1,f);
  if(typeof p.image!=='string'||(p.image&&!/^\/(products\/[A-Za-z0-9._-]+\.(jpg|png|webp)|api\/photos\/[a-f0-9]{64})$/.test(p.image)))fail('Invalid product photo.');
@@ -29,6 +30,10 @@ function validateSale(s){
 function applyEvent(state,event){
  if(typeof event.id!=='string'||!/^[a-f0-9-]{36}$/i.test(event.id))fail('Invalid operation ID.');
  const next=structuredClone(state);let touched=[];
+ if(event.kind==='category'){
+  next.categories=categoryList([...(next.categories||[]),normalizeCategory(event.name)],next.products);
+  return {state:next,products:[],sale:null};
+ }
  if(event.kind==='product'){
   const after=validateProduct(event.after),before=event.before;
   const remote=next.products.find(p=>p.id===after.id);
@@ -59,6 +64,7 @@ function applyEvent(state,event){
   sale.number=Math.max(0,...next.sales.map(s=>s.number))+1;next.sales.push(sale);
   return {state:next,products:touched,sale};
  }else fail('Unknown sync operation.');
+ next.categories=categoryList(next.categories||[],next.products);
  return {state:next,products:touched,sale:null};
 }
 module.exports={fields,fail,int,validateProduct,validateSale,amounts,applyEvent};
