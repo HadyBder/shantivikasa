@@ -32,6 +32,7 @@ def main():
     parser.add_argument('--makensis', help='Path to NSIS 3 makensis, otherwise discovered on PATH')
     parser.add_argument('--seed-snapshot', type=Path, help='Private original snapshot for the installer only; never commit live receipts')
     parser.add_argument('--skip-build', action='store_true', help='Use an existing dist from npm run build')
+    parser.add_argument('--stage-only', action='store_true', help='Build and verify the app files without compressing the installer')
     args = parser.parse_args()
     output = args.output.resolve()
     output.mkdir(parents=True, exist_ok=True)
@@ -80,6 +81,9 @@ def main():
     package = json.loads((ROOT / 'package.json').read_text())
     (app / 'package.json').write_text(json.dumps({key: package[key] for key in
         ['name', 'version', 'description', 'main']}, indent=2), encoding='utf-8')
+    if args.stage_only:
+        print(f'App files staged and runtime verified: {stage}', flush=True)
+        return
     compiler = args.makensis or shutil.which('makensis')
     if not compiler and os.name == 'nt':
         candidate = Path(os.environ.get('ProgramFiles(x86)', r'C:\Program Files (x86)')) / 'NSIS/makensis.exe'
