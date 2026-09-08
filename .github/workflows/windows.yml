@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths: ['package.json', '.github/workflows/windows.yml', 'scripts/verify-*', 'tests/**']
+    paths: ['package*.json', '.github/workflows/windows.yml', 'app/**', 'components/**', 'desktop/**', 'lib/**', 'shared/**', 'public/**', 'data/**', 'scripts/**', 'tests/**', 'vite.config.*']
 permissions:
   contents: read
 jobs:

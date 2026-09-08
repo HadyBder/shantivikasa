@@ -6,6 +6,9 @@ Unicode true
 !ifndef APP_DIR
  !define APP_DIR "../release/windows-app"
 !endif
+!ifndef APP_FILES
+ !define APP_FILES "${APP_DIR}/*.*"
+!endif
 !ifndef OUTPUT_FILE
  !define OUTPUT_FILE "../release/ShantiVikasa-Setup-1.0.3.exe"
 !endif
@@ -62,7 +65,7 @@ Section "Install"
  SetShellVarContext current
  Call EnsureAppClosed
  SetOutPath "$INSTDIR"
- File /r "${APP_DIR}/*.*"
+ File /r "${APP_FILES}"
  FileOpen $0 "$INSTDIR\.shanti-install" w
  FileWrite $0 "ShantiVikasa-1.0.3"
  FileClose $0

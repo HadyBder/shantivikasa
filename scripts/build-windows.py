@@ -90,7 +90,7 @@ def main():
     installer = output / f'ShantiVikasa-Setup-{package["version"]}.exe'
     prefix = '/' if os.name == 'nt' else '-'
     subprocess.run([compiler, f'{prefix}V3', f'{prefix}WX',
-        f'{prefix}DAPP_DIR={stage}', f'{prefix}DOUTPUT_FILE={installer}',
+        f'{prefix}DAPP_DIR={stage}', f'{prefix}DAPP_FILES={stage / "*.*"}', f'{prefix}DOUTPUT_FILE={installer}',
         f'{prefix}DAPP_ICON={ROOT / "public/shanti.ico"}', str(ROOT / 'scripts/installer.nsi')],
         cwd=ROOT, check=True)
     print(f'Installer created: {installer}', flush=True)
