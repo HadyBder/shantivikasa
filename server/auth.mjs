@@ -1,6 +1,9 @@
 import {createHmac,scryptSync,timingSafeEqual,createHash} from 'node:crypto';
 export const ready=()=>!!(process.env.TURSO_DATABASE_URL&&process.env.TURSO_AUTH_TOKEN&&process.env.REGISTER_PASSWORD_HASH&&process.env.REGISTER_SESSION_SECRET?.length>=32);
 const signature=value=>createHmac('sha256',process.env.REGISTER_SESSION_SECRET).update(value+'|'+process.env.REGISTER_PASSWORD_HASH).digest('base64url');
+export function loginPassword(raw){
+ try{const body=JSON.parse(raw);return body&&typeof body==='object'&&!Array.isArray(body)&&typeof body.password==='string'?body.password:null;}catch{return null;}
+}
 export function passwordMatches(password,encoded=process.env.REGISTER_PASSWORD_HASH){
  try{const [algorithm,salt,hash]=encoded.split(':');if(algorithm!=='scrypt'||salt.length!==32||hash.length!==128||typeof password!=='string'||password.length>256)return false;return timingSafeEqual(scryptSync(password,salt,64),Buffer.from(hash,'hex'));}catch{return false;}
 }

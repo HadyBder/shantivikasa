@@ -1,6 +1,6 @@
 import handler from '../server/register.mjs';
 import {getClient,sqlAdapter,photoAdapter} from '../server/turso.mjs';
-import {ready,passwordMatches,newSession,isAuthenticated,sessionCookie,allowLogin} from '../server/auth.mjs';
+import {ready,passwordMatches,loginPassword,newSession,isAuthenticated,sessionCookie,allowLogin} from '../server/auth.mjs';
 export async function handle(request){
  const url=new URL(request.url),path=url.searchParams.get('route')||url.pathname;
  if(path==='/api/session')return Response.json({configured:ready(),authenticated:ready()&&isAuthenticated(request)},{headers:{'Cache-Control':'no-store'}});
@@ -10,9 +10,10 @@ export async function handle(request){
   if(path==='/api/login'&&request.method==='POST'){
    if(!request.headers.get('content-type')?.startsWith('application/json'))return new Response('Invalid request',{status:415});
    const raw=await request.text();if(raw.length>2048)return new Response('Request too large',{status:413});
+   const password=loginPassword(raw);if(password===null)return Response.json({error:'Invalid JSON request.'},{status:400});
    const ip=request.headers.get('x-vercel-forwarded-for')?.split(',')[0]||'unknown';
    if(!await allowLogin(getClient(),ip))return Response.json({error:'Too many attempts. Try again in 15 minutes.'},{status:429});
-   if(!passwordMatches(JSON.parse(raw).password))return Response.json({error:'That password is not correct.'},{status:401});
+   if(!passwordMatches(password))return Response.json({error:'That password is not correct.'},{status:401});
    return Response.json({ok:true},{headers:{'Set-Cookie':sessionCookie(newSession()),'Cache-Control':'no-store'}});
   }
   if(!isAuthenticated(request))return Response.json({error:'Please sign in to your shop register.'},{status:401});
