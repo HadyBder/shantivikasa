@@ -5,3 +5,7 @@ test('password checking, signed sessions, tampering, expiry and password rotatio
  assert(passwordMatches('test-only-strong-password'));assert(!passwordMatches('wrong'));const token=newSession(1000),cookie=sessionCookie(token);const r=new Request('https://shop.test',{headers:{cookie}});
  assert(isAuthenticated(r,2000));assert(!isAuthenticated(r,1000+31*86400000));assert(!isAuthenticated(new Request('https://shop.test',{headers:{cookie:cookie.replace(token,token+'x')}}),2000));process.env.REGISTER_PASSWORD_HASH+='changed';assert(!isAuthenticated(r,2000));delete process.env.REGISTER_PASSWORD_HASH;delete process.env.REGISTER_SESSION_SECRET;
 });
+test('login payload parsing rejects malformed and non-object JSON',async()=>{
+ const {loginPassword}=await import('../server/auth.mjs');
+ assert.equal(loginPassword('{'),null);assert.equal(loginPassword('null'),null);assert.equal(loginPassword('[]'),null);assert.equal(loginPassword('{}'),null);assert.equal(loginPassword('{"password":42}'),null);assert.equal(loginPassword('{"password":"shop-secret"}'),'shop-secret');
+});
